@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ペットの爪切り・お手入れ周期スマート管理カレンダー</title>
+    <style>
+        :root {
+            --primary: #FF7043;
+            --primary-light: #FFAB91;
+            --primary-dark: #F4511E;
+            --accent: #26A69A;
+            --bg-color: #FFF9F5;
+            --card-bg: #FFFFFF;
+            --text-main: #37474F;
+            --text-sub: #78909C;
+            --border: #CFD8DC;
+            --alert: #EF5350;
+            --warning: #FFA726;
+            --success: #66BB6A;
+            --radius: 16px;
+            --shadow: 0 10px 25px rgba(255, 112, 67, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            color: var(--text-main);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        /* カードデザイン */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 8px;
+        }
+
+        /* ペットプロファイル選択・追加 */
+        .pet-bar {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }
+
+        .pet-chip {
+            background: #fff;
+            border: 2px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pet-chip.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger {
+            background: var(--alert);
+        }
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        /* フォーム要素 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--text-sub);
+        }
+
+        .form-control {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        /* ステータスダッシュボード (ケア一覧) */
+        .care-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .care-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            background: #fff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .care-card.status-ok { border-left: 6px solid var(--success); }
+        .care-card.status-soon { border-left: 6px solid var(--warning); }
+        .care-card.status-over { border-left: 6px solid var(--alert); }
+
+        .care-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .care-name {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .care-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        .badge-ok { background: var(--success); }
+        .badge-soon { background: var(--warning); }
+        .badge-over { background: var(--alert); }
+
+        .care-body {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 14px;
+        }
+
+        .care-body p {
+            margin-bottom: 4px;
+        }
+
+        .care-body strong {
+            color: var(--text-main);
+        }
+
+        .care-footer {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 履歴・カレンダー */
+        .history-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--bg-color);
+            font-size: 0.85rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        /* モーダル共通 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            animation: modalIn 0.2s ease-out;
+        }
+
+        @keyframes modalIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        .tab-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            font-weight: bold;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+
+        /* SVGアイコン用ユーティリティ */
+        .icon {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>
+            <svg class="icon" viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            ペットの爪切り・お手入れスマート管理
+        </h1>
+        <p>自宅ケアの「やりすぎ」と「放置」を防ぐ、うちの子専用の周期マネージャー</p>
+    </header>
+
+    <!-- ペット選択タブエリア -->
+    <div class="card" style="padding: 16px 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-weight: bold; font-size: 0.9rem; color: var(--text-sub);">対象ペット</span>
+            <button class="btn btn-sm btn-outline" onclick="openPetModal()">＋ ペットを追加</button>
+        </div>
+        <div class="pet-bar" id="petBar">
+            <!-- JSで動的生成 -->
+        </div>
+    </div>
+
+    <!-- メインコンテンツ（選択中のペットが存在する場合のみ表示） -->
+    <div id="mainContent" style="display: none;">
+        <!-- お手入れ一覧ダッシュボード -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom:0; border:none; padding:0;">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                    お手入れ状況・スマートタイマー
+                </div>
+                <button class="btn btn-sm" onclick="openCareModal()">＋ お手入れ項目を追加</button>
+            </div>
+            <div class="care-grid" id="careGrid">
+                <!-- JSで動的生成 -->
+            </div>
+        </div>
+
+        <!-- 履歴とスケジュールログ -->
+        <div class="card">
+            <div class="card-title">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                最近のケア履歴
+            </div>
+            <ul class="history-list" id="historyList">
+                <!-- JSで動的生成 -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- 空の状態 -->
+    <div class="card" id="emptyState" style="display: none;">
+        <div class="empty-state">
+            <p>登録されているペットがいません。<br>上の「＋ ペットを追加」ボタンからペットを登録してください。</p>
+        </div>
+    </div>
+</div>
+
+<!-- モーダル: ペット追加 -->
+<div class="modal" id="petModal">
+    <div class="modal-content">
+        <div class="modal-title">ペットの登録</div>
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>ペットのお名前</label>
+            <input type="text" id="petNameInput" class="form-control" placeholder="例: もも、レオ">
+        </div>
+        <div class="form-group">
+            <label>種類</label>
+            <select id="petTypeInput" class="form-control">
+                <option value="犬">犬</option>
+                <option value="猫">猫</option>
+                <option value="その他">その他</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeModal('petModal')">キャンセル</button>
+            <button class="btn btn-sm" onclick="savePet()">登録する</button>
+        </div>
+    </div>
+</div>
+
+<!-- モーダル: お手入れ項目追加 -->
+<div class="modal" id="careModal">
+    <div class="modal-content">
+        <div class="modal-title">お手入れ項目の追加</div>
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>項目名</label>
+            <input type="text" id="careNameInput" class="form-control" placeholder="例: 爪切り、ブラッシング、耳掃除">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>推奨周期（日数）</label>
+            <input type="number" id="careIntervalInput" class="form-control" placeholder="例: 14 (2週間おき)" min="1">
+        </div>
+        <div class="form-group">
+            <label>直近で最後に行った日</label>
+            <input type="date" id="careLastDateInput" class="form-control">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeModal('careModal')">キャンセル</button>
+            <button class="btn btn-sm" onclick="saveCareItem()">追加する</button>
+        </div>
+    </div>
+</div>
+
+<!-- モーダル: 完了報告（今日やったよ） -->
+<div class="modal" id="doneModal">
+    <div class="modal-content">
+        <div class="modal-title">お手入れ完了の記録</div>
+        <p id="doneTargetText" style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-sub);"></p>
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>実施日</label>
+            <input type="date" id="doneDateInput" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>メモ・気づき（任意）</label>
+            <input type="text" id="doneMemoInput" class="form-control" placeholder="例: 少し嫌がったけどおやつで解決">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeModal('doneModal')">キャンセル</button>
+            <button class="btn btn-sm" onclick="confirmDone()">完了を記録する</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- データ構造 & LocalStorage管理 ---
+    const STORAGE_KEY = 'PET_CARE_MANAGER_DATA_V1';
+    
+    let db = {
+        pets: []
+    };
+
+    let currentPetId = null;
+    let targetCareIdForDone = null;
+
+    function loadData() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                db = JSON.parse(saved);
+            } catch(e) {
+                db = { pets: [] };
+            }
+        } else {
+            // 初期サンプルデータ
+            db = {
+                pets: [
+                    {
+                        id: 'pet_1',
+                        name: 'ハル',
+                        type: '犬',
+                        cares: [
+                            { id: 'care_1', name: '爪切り', interval: 21, lastDate: getOffsetDateString(-25), history: [{date: getOffsetDateString(-25), memo: 'スムーズにできた'}] },
+                            { id: 'care_2', name: 'ブラッシング', interval: 3, lastDate: getOffsetDateString(-2), history: [{date: getOffsetDateString(-2), memo: '抜け毛多め'}] },
+                            { id: 'care_3', name: '耳掃除', interval: 14, lastDate: getOffsetDateString(-10), history: [{date: getOffsetDateString(-10), memo: ''}] }
+                        ]
+                    }
+                ]
+            };
+            saveData();
+        }
+
+        if (db.pets.length > 0 && !currentPetId) {
+            currentPetId = db.pets[0].id;
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    }
+
+    // 日付計算用ユーティリティ
+    function getOffsetDateString(offsetDays) {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        return d.toISOString().split('T')[0];
+    }
+
+    function diffDays(dateString) {
+        const target = new Date(dateString);
+        const today = new Date();
+        // 時間部分をリセット
+        target.setHours(0,0,0,0);
+        today.setHours(0,0,0,0);
+        const diffTime = today - target;
+        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // --- レンダリング処理 ---
+    function render() {
+        renderPetBar();
+        
+        const mainContent = document.getElementById('mainContent');
+        const emptyState = document.getElementById('emptyState');
+
+        if (db.pets.length === 0) {
+            mainContent.style.display = 'none';
+            emptyState.style.display = 'block';
+            return;
+        }
+
+        mainContent.style.display = 'block';
+        emptyState.style.display = 'none';
+
+        renderCares();
+        renderHistory();
+    }
+
+    function renderPetBar() {
+        const bar = document.getElementById('petBar');
+        bar.innerHTML = '';
+
+        db.pets.forEach(pet => {
+            const chip = document.createElement('div');
+            chip.className = `pet-chip ${pet.id === currentPetId ? 'active' : ''}`;
+            chip.innerHTML = `
+                <span>${pet.type === '犬' ? '🐶' : pet.type === '猫' ? '🐱' : '🐾'}</span>
+                <span>${escapeHTML(pet.name)}</span>
+            `;
+            chip.onclick = () => {
+                currentPetId = pet.id;
+                render();
+            };
+            bar.appendChild(chip);
+        });
+    }
+
+    function renderCares() {
+        const grid = document.getElementById('careGrid');
+        grid.innerHTML = '';
+
+        const pet = db.pets.find(p => p.id === currentPetId);
+        if (!pet || !pet.cares || pet.cares.length === 0) {
+            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">お手入れ項目が登録されていません。</div>';
+            return;
+        }
+
+        pet.cares.forEach(care => {
+            const daysPassed = diffDays(care.lastDate);
+            const daysLeft = care.interval - daysPassed; // 残り日数
+            
+            let statusClass = 'status-ok';
+            let badgeClass = 'badge-ok';
+            let badgeText = 'おっけー';
+            let descText = '';
+
+            if (daysLeft < 0) {
+                statusClass = 'status-over';
+                badgeClass = 'badge-over';
+                badgeText = `⚠️ ${Math.abs(daysLeft)}日オーバー！`;
+                descText = `推奨周期（${care.interval}日）を過ぎています。早めのお手入れを！`;
+            } else if (daysLeft === 0) {
+                statusClass = 'status-soon';
+                badgeClass = 'badge-soon';
+                badgeText = '📢 今日が目安日';
+                descText = `前回からちょうど${care.interval}日経ちました。`;
+            } else if (daysLeft <= 3) {
+                statusClass = 'status-soon';
+                badgeClass = 'badge-soon';
+                badgeText = `あと${daysLeft}日`;
+                descText = `そろそろお手入れの時期です。`;
+            } else {
+                statusClass = 'status-ok';
+                badgeClass = 'badge-ok';
+                badgeText = `あと${daysLeft}日`;
+                descText = `まだ余裕があります（次回目安: ${getFutureDateStr(care.lastDate, care.interval)}）`;
+            }
+
+            const card = document.createElement('div');
+            card.className = `care-card ${statusClass}`;
+            card.innerHTML = `
+                <div>
+                    <div class="care-header">
+                        <span class="care-name">${escapeHTML(care.name)}</span>
+                        <span class="care-badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="care-body">
+                        <p>推奨周期: <strong>${care.interval}日ごと</strong></p>
+                        <p>前回実施: ${care.lastDate || '未実施'}</p>
+                        <p style="margin-top:6px; font-size:0.8rem; color:var(--text-main);">${descText}</p>
+                    </div>
+                </div>
+                <div class="care-footer">
+                    <button class="btn btn-sm" style="flex:1;" onclick="openDoneModal('${care.id}')">今日やった！</button>
+                    <button class="btn btn-sm btn-outline btn-danger" style="padding:6px 10px;" onclick="deleteCare('${care.id}')" title="削除">×</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+
+        const pet = db.pets.find(p => p.id === currentPetId);
+        if (!pet) return;
+
+        // 全ケアの履歴を統合して日付順（降順）にソート
+        let allHistories = [];
+        pet.cares.forEach(care => {
+            if (care.history) {
+                care.history.forEach(h => {
+                    allHistories.push({
+                        careName: care.name,
+                        date: h.date,
+                        memo: h.memo
+                    });
+                });
+            }
+        });
+
+        allHistories.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (allHistories.length === 0) {
+            list.innerHTML = '<li class="history-item" style="justify-content:center; color:var(--text-sub);">履歴はまだありません</li>';
+            return;
+        }
+
+        allHistories.slice(0, 10).forEach(h => {
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            li.innerHTML = `
+                <div>
+                    <strong>${escapeHTML(h.careName)}</strong>
+                    <span style="color:var(--text-sub); margin-left:8px; font-size:0.8rem;">${h.memo ? '(' + escapeHTML(h.memo) + ')' : ''}</span>
+                </div>
+                <div style="color: var(--text-sub);">${h.date}</div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function getFutureDateStr(baseDateStr, addDays) {
+        if (!baseDateStr) return '-';
+        const d = new Date(baseDateStr);
+        d.setDate(d.getDate() + addDays);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    // --- モーダル制御 ---
+    function openPetModal() {
+        document.getElementById('petNameInput').value = '';
+        document.getElementById('petModal').classList.add('active');
+    }
+
+    function openCareModal() {
+        document.getElementById('careNameInput').value = '';
+        document.getElementById('careIntervalInput').value = '';
+        document.getElementById('careLastDateInput').value = new Date().toISOString().split('T')[0];
+        document.getElementById('careModal').classList.add('active');
+    }
+
+    function openDoneModal(careId) {
+        targetCareIdForDone = careId;
+        const pet = db.pets.find(p => p.id === currentPetId);
+        const care = pet.cares.find(c => c.id === careId);
+        
+        document.getElementById('doneTargetText').innerText = `「${care.name}」を行った日を記録します`;
+        document.getElementById('doneDateInput').value = new Date().toISOString().split('T')[0];
+        document.getElementById('doneMemoInput').value = '';
+        document.getElementById('doneModal').classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    // --- アクション処理 ---
+    function savePet() {
+        const name = document.getElementById('petNameInput').value.trim();
+        const type = document.getElementById('petTypeInput').value;
+
+        if (!name) {
+            alert('ペットの名前を入力してください');
+            return;
+        }
+
+        const newPet = {
+            id: 'pet_' + Date.now(),
+            name,
+            type,
+            cares: [
+                { id: 'care_' + Date.now() + '_1', name: '爪切り', interval: 14, lastDate: new Date().toISOString().split('T')[0], history: [] }
+            ]
+        };
+
+        db.pets.push(newPet);
+        currentPetId = newPet.id;
+        saveData();
+        closeModal('petModal');
+        render();
+    }
+
+    function saveCareItem() {
+        const name = document.getElementById('careNameInput').value.trim();
+        const interval = parseInt(document.getElementById('careIntervalInput').value);
+        const lastDate = document.getElementById('careLastDateInput').value;
+
+        if (!name || isNaN(interval) || interval <= 0 || !lastDate) {
+            alert('すべての項目を正しく入力してください');
+            return;
+        }
+
+        const pet = db.pets.find(p => p.id === currentPetId);
+        if (!pet) return;
+
+        const newCare = {
+            id: 'care_' + Date.now(),
+            name,
+            interval,
+            lastDate,
+            history: [
+                { date: lastDate, memo: '初回設定・直近実施日' }
+            ]
+        };
+
+        pet.cares.push(newCare);
+        saveData();
+        closeModal('careModal');
+        render();
+    }
+
+    function confirmDone() {
+        const date = document.getElementById('doneDateInput').value;
+        const memo = document.getElementById('doneMemoInput').value.trim();
+
+        if (!date) {
+            alert('日付を選択してください');
+            return;
+        }
+
+        const pet = db.pets.find(p => p.id === currentPetId);
+        const care = pet.cares.find(c => c.id === targetCareIdForDone);
+
+        if (care) {
+            care.lastDate = date;
+            if (!care.history) care.history = [];
+            care.history.push({ date, memo });
+            saveData();
+            closeModal('doneModal');
+            render();
+        }
+    }
+
+    function deleteCare(careId) {
+        if (!confirm('このお手入れ項目を削除してもよろしいですか？')) return;
+
+        const pet = db.pets.find(p => p.id === currentPetId);
+        if (pet) {
+            pet.cares = pet.cares.filter(c => c.id !== careId);
+            saveData();
+            render();
+        }
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+    }
+
+    // 初期化実行
+    loadData();
+    render();
+</script>
+
+</body>
+</html>
